@@ -6,8 +6,13 @@ from venv import logger
 import requests
 from dotenv import load_dotenv
 
-logging.basicConfig(level=logging.DEBUG, filename='../logs/utils.log', format='%(asctime)s - %(name)s'
-                                        ' - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+logging.basicConfig(
+    level=logging.DEBUG,
+    filename="../logs/utils.log",
+    encoding="utf-8",
+    format="%(asctime)s - %(name)s" " - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 
 def read_json_file(filename):

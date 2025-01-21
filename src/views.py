@@ -4,8 +4,15 @@ import pprint
 
 from utils import get_exchange_rates, get_transactions, read_json_file
 
-logging.basicConfig(level=logging.DEBUG, filename='../logs/views.log', format='%(asctime)s - %(name)s'
-                                        ' - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+logging.basicConfig(
+    level=logging.DEBUG,
+    filename="../logs/views.log",
+    encoding="utf-8",
+    format="%(asctime)s - %(name)s" " - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+
+
 def greetings() -> str:
     """Функция, которая возвращает строку с приветствием в зависимости от времени."""
     hour = int(datetime.datetime.now().strftime("%H"))
@@ -89,7 +96,7 @@ rates = get_transactions(read_json_file("../user_settings.json"))
 # Использование полученных данных
 pprint.pprint(rates)
 
-result_dict = get_exchange_rates("S&P500")
+result_dict = get_exchange_rates(read_json_file("../user_settings.json"))
 pprint.pprint(result_dict)
 
 logging.info("Функция top_transactions успешно выполнена.")
