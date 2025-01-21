@@ -1,50 +1,59 @@
 import json
-from datetime import datetime
+import datetime
+import logging
+
+logging.basicConfig(level=logging.DEBUG, filename='../logs/services.log', format='%(asctime)s - %(name)s'
+                                        ' - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+
+# def read_json_file(filename):
+#     with open(filename, 'r') as file:
+#         data = json.load(file)
+#     return data
+
 
 def analyze_cashback(data, year, month):
-    # 1. Преобразуем данные в удобный формат
-    categories = {}
-    for transaction in data:
-        category = transaction['category']
-        if category not in categories:
-            categories[category] = 0
-        categories[category] += transaction['amount']
+    """Сервис позволяет проанализировать, какие категории были наиболее выгодными для выбора
+    в качестве категорий повышенного кешбэка."""
+    # Преобразование входных данных
+    transactions = data['transactions']
+    categories = data['categories']
 
-    # 2. Рассчитаем сумму кешбэка для каждой категории
-    result = {}
-    now = datetime.strptime(f"{year}-{month}-01", "%Y-%m-01")
-    while now <= datetime.strptime(f"{year}-{month}-31", "%Y-%m-31"):
-        month_data = {
-            'date': now.strftime("%Y-%m-%d"),
-            'transactions': []
-        }
-        for category, amount in categories.items():
-            if now.day in range(1, 32):  # Проверяем, есть ли транзакции за этот день
-                month_data['transactions'].append({
-                    'category': category,
-                    'amount': amount
-                })
-        result[now.strftime("%b")] = month_data
-        now += datetime.timedelta(days=1)
+    # Расчёт выгоды для каждой категории
+    results = {}
+    for category in categories:
+        total_cashback = 0
+        for transaction in transactions:
+            if transaction['category'] == category and transaction['date'].year == year and transaction['date'].month == month:
+                total_cashback += transaction['cashback']
+        results[category] = total_cashback
 
-    return result
+    logging.info("Анализ кэшбэка за %s год, %s месяц успешно завершён", year, month)
+    return results
+
+# data = read_json_file('путь_к_вашему_файлу.json')
+
+# Настройка логирования
+
 
 # Пример использования функции
-data = [
-    {
-        'category': 'Категория 1',
-        'amount': 1000
-    },
-    {
-        'category': 'Категория 2',
-        'amount': 2000
-    },
-    {
-        'category': 'Категория 3',
-        'amount': 500
-    }
-]
+data = {
+    'transactions': [
+        {
+            'category': 'Категория 1',
+            'cashback': 500,
+            'date': datetime.datetime(2023, 1, 1)
+        },
+        {
+            'category': 'Категория 2',
+            'cashback': 1000,
+            'date': datetime.datetime(2023, 2, 1)
+        }
+    ],
+    'categories': ['Категория 1', 'Категория 2']
+}
 
-result = analyze_cashback(data, 2023, 12)
-json_result = json.dumps(result, ensure_ascii=False)
-print(json_result)
+result = analyze_cashback(data, 2023, 2)
+print("{")
+for key, value in result.items():
+    print("\t\"{}\": {},".format(key, value))
+print("}")

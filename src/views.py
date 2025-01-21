@@ -1,9 +1,11 @@
 import datetime
+import logging
 import pprint
 
 from utils import get_exchange_rates, get_transactions, read_json_file
 
-
+logging.basicConfig(level=logging.DEBUG, filename='../logs/views.log', format='%(asctime)s - %(name)s'
+                                        ' - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 def greetings() -> str:
     """Функция, которая возвращает строку с приветствием в зависимости от времени."""
     hour = int(datetime.datetime.now().strftime("%H"))
@@ -27,7 +29,6 @@ def calculate_card_details(transactions):
     :return: словарь с деталями по каждой карте
     """
 
-    # Словарь для хранения деталей по каждой карте
     card_details = {}
 
     for transaction in transactions:
@@ -35,14 +36,14 @@ def calculate_card_details(transactions):
         try:
             card_number = transaction["card_number"]
         except KeyError as e:
-            print("Ошибка: ключ 'card_number' не найден в словаре транзакций.")
+            logging.error("Ошибка: ключ 'card_number' не найден в словаре транзакций.")
             continue
 
         # Извлечение последних 4 цифр номера карты
         try:
             last_four_digits = card_number[-4:]
         except Exception as e:
-            print("Ошибка при извлечении последних 4 цифр номера карты:", e)
+            logging.exception("Ошибка при извлечении последних 4 цифр номера карты:")
             continue
 
         total_amount = sum(
@@ -60,15 +61,8 @@ def calculate_card_details(transactions):
 
 
 def top_transactions(card_details):
-    """
-    Выводит топ-5 транзакций по сумме для всех карт.
-    :param card_details: словарь с информацией о транзакциях
-    """
-
-    # Создаём список для хранения топ-5 транзакций
     top_transactions = []
 
-    # Проходимся по каждой карте
     for _, details in card_details.items():
         # Сортируем транзакции по убыванию суммы
         sorted_transactions = sorted(details["transactions"], key=lambda x: x["amount"], reverse=True)
@@ -76,15 +70,17 @@ def top_transactions(card_details):
         # Добавляем топ-5 транзакций в общий список
         top_transactions.extend(sorted_transactions[:5])
 
-    print("Топ-5 транзакций:")
-    # Выводим топ-5 транзакций, пронумеровав их
-    try:
-        for i, transaction in enumerate(top_transactions):
-            print(
-                f"{i + 1}: Дата: {transaction['date']}, Время: {transaction['time']}, Сумма: {transaction['amount']} рублей"
-            )
-    except Exception as e:
-        print("Произошла ошибка:", e)
+        print("Топ-5 транзакций:")
+        # Выводим топ-5 транзакций, пронумеровав их
+        try:
+            for i, transaction in enumerate(top_transactions):
+                print(
+                    f"{i + 1}: Дата: {transaction['date']}, Время: {transaction['time']}, Сумма: {transaction['amount']} рублей"
+                )
+        except Exception as e:
+            print("Произошла ошибка:", e)
+            logging.error("Ошибка при обработке транзакций: " + str(e))
+
     return top_transactions
 
 
@@ -95,3 +91,5 @@ pprint.pprint(rates)
 
 result_dict = get_exchange_rates("S&P500")
 pprint.pprint(result_dict)
+
+logging.info("Функция top_transactions успешно выполнена.")

@@ -1,50 +1,60 @@
+import datetime
 import json
-from pandas import DataFrame
-from datetime import date
+import logging
+
+import pandas as pd
+
+logging.basicConfig(level=logging.DEBUG, filename='../logs/reports.log', format='%(asctime)s - %(name)s'
+                                        ' - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+
+df = pd.read_excel("../data/operations.xlsx")
+df.set_index('Категория', drop=False, inplace=True)
+df['Дата операции'] = pd.to_datetime(df['Дата операции'], dayfirst=True).dt.date
 
 def report_decorator(func):
-    """
-    Декоратор для функций-отчетов, записывающий результат в файл.
-    Если имя файла не указано, то используется название по умолчанию.
-    """
-
     def wrapper(*args, **kwargs):
         result = func(*args, **kwargs)
         filename = kwargs.get("filename", "report_{}.json".format(func.__name__))
-        with open(filename, "w") as file:
-            json.dump(result, file)
+        try:
+            with open(filename, "w") as file:
+                json.dump(result, file)
+        except Exception as e:
+            print("Ошибка при записи файла:", e)
         return result
 
     return wrapper
 
-# Функция для формирования отчета
-def generate_report(transactions_df, category, date=None):
+
+def generate_report(transactions, category, date=None):
+    """
+    Функция для генерации отчёта по категории транзакций за определённый период времени.
+    """
+
     if date is None:
-        date = date.today()
-    three_months_ago = date - date.relativedelta(months=3)
-    filtered_transactions = transactions_df[
-        (transactions_df["category"] == category) &
-        (transactions_df["date"] >= three_months_ago)
+        date = datetime.date.today()
+    three_months_ago = date - datetime.timedelta(days=90)  # 3 месяца в днях
+
+    filtered_transactions = transactions.loc[
+        (transactions["Категория"] == category)
+        & (transactions["Дата операции"] >= three_months_ago)
+        & (transactions["Дата операции"] <= date)
     ]
-    total_spent = filtered_transactions["amount"].sum()
+
+    total_spent = filtered_transactions["Сумма операции"].sum()
 
     result = {
-        "category": category,
-        "date": date,
-        "total_spent": total_spent
+        "Категория": category,
+        "Дата операции": str(date),
+        "Всего потрачено": total_spent.astype(str)
     }
+    logging.info("Отчет по категории %s за %s успешно сгенерирован", category, str(date))
     return result
 
 @report_decorator
-def generate_category_report(transactions_df, category):
-    return generate_report(transactions_df, category)
+def generate_category_report(category):
+    json_data = generate_report(df, category)
 
-# Пример использования
-if __name__ == "__main__":
-    transactions_df = DataFrame({
-        "category": ["food", "transport", "entertainment"],
-        "amount": [100, 200, 50],
-        "date": [date(2023, 1, 1), date(2023, 2, 15), date(2023, 3, 1)]
-    })
-    generate_category_report(transactions_df, "food")
-    print("Отчет записан в файл 'report_generate_category_report.json'.")
+    with open('../data/output_file.json', 'w', encoding='utf-8') as f:
+        json.dump(json_data, f, indent=4)
+
+generate_category_report('Продукты')
