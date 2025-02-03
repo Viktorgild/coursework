@@ -1,74 +1,64 @@
-from src.utils import get_exchange_rates
-from src.views import top_transactions, get_transactions
+import pytest
+
+from src.views import top_transactions, greetings, calculate_card_details
 
 
-def test_get_transactions(mocker):
-    # Создание тестовых данных
-    test_data = {
-        "transactions": [
-            {
-                "card_number": "4242 4242 4242 4242",
-                "amount": 1000,
-                "date": "2023-01-01",
-                "time": "12:00:00"
-            },
-            ...
-        ]
-    }
-
-    # Мокинг функции read_json_file
-    mocked_read_json_file = mocker.patch("read_json_file")
-    mocked_read_json_file.return_value = test_data
-
-    # Вызов функции get_transactions
-    result = get_transactions()
-
-    # Проверка результата
-    assert result == test_data
-
-def test_get_exchange_rates(mocker):
-    # Создание тестовых данных
-    test_data = [
-        {"S&P500": 3000},
-        ...
+def test_greetings(monkeypatch):
+    # Тестируем разные времена суток
+    test_cases = [
+        (6, "Доброе утро"),
+        (12, "Доброе утро"),
+        (13, "Добрый день"),
+        (17, "Добрый день"),
+        (18, "Добрый вечер"),
+        (23, "Добрый вечер"),
+        (0, "Доброй ночи"),
+        (5, "Доброй ночи"),
     ]
 
-    # Мокинг функции get_exchange_rates
-    mocked_get_exchange_rates = mocker.patch("get_exchange_rates")
-    mocked_get_exchange_rates.return_value = test_data
+    for hour, expected in test_cases:
+        monkeypatch.setattr("datetime.datetime.now", lambda: datetime.datetime(2023, 1, 1, hour))
+        assert greetings() == expected
 
-    # Вызов функции get_exchange_rates
-    result = get_exchange_rates("S&P500")
 
-    # Проверка результата
-    assert result == test_data["S&P500"]
+def test_calculate_card_details():
+    transactions = [
+        {"card_number": "1234567890123456", "amount": 100, "date": "2023-10-01", "time": "12:00"},
+        {"card_number": "1234567890123456", "amount": 200, "date": "2023-10-02", "time": "13:00"},
+        {"card_number": "9876543210987654", "amount": 150, "date": "2023-10-01", "time": "14:00"},
+    ]
 
-def test_top_transactions(mocker):
-    # Создание тестовых данных
-    test_data = {
-        "transactions": [
-            {
-                "card_number": "4242 4242 4242 4242",
-                "amount": 1000,
-                "date": "2023-01-01",
-                "time": "12:00:00"
-            },
-            ...
-        ]
+    result = calculate_card_details(transactions)
+
+    assert "3456" in result
+    assert result["3456"]["total_amount"] == 300
+    assert result["3456"]["cashback"] == 3
+    assert len(result["3456"]["transactions"]) == 2
+    assert "7654" in result
+    assert result["7654"]["total_amount"] == 150
+    assert result["7654"]["cashback"] == 1
+    assert len(result["7654"]["transactions"]) == 1
+
+
+def test_top_transactions(mock_print):
+    card_details = {
+        "3456": {
+            "last_four_digits": "3456",
+            "total_amount": 300,
+            "cashback": 3,
+            "transactions": [
+                {"date": "2023-10-01", "time": "12:00", "amount": 100},
+                {"date": "2023-10-02", "time": "13:00", "amount": 200},
+            ]
+        }
     }
 
-    # Мокинг функций get_transactions и get_exchange_rates
-    mocked_get_transactions = mocker.patch("get_transactions")
-    mocked_get_transactions.return_value = test_data
-    mocked_get_exchange_rates = mocker.patch("get_exchange_rates")
+    top_transactions(card_details)
 
-    # Вызов функции top_transactions
-    result = top_transactions()
+    captured = mock_print.readouterr()
+    assert "Топ-5 транзакций для карты 3456:" in captured.out
+    assert "1: Дата: 2023-10-02, Время: 13:00, Сумма: 200 рублей" in captured.out
+    assert "2: Дата: 2023-10-01, Время: 12:00, Сумма: 100 рублей" in captured.out
 
-    # Проверка результатов
-    for i, transaction in enumerate(result):
-        assert i + 1 == transaction["id"]
-        assert transaction["amount"] == 1000
-        assert transaction["date"] == "2"
 
 

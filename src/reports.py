@@ -9,14 +9,14 @@ logging.basicConfig(
     level=logging.DEBUG,
     filename="../logs/reports.log",
     encoding="utf-8",
-    format="%(asctime)s - %(name)s" " - %(levelname)s - %(message)s",
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
+# Чтение данных из Excel
 df = pd.read_excel("../data/operations.xlsx")
 df.set_index("Категория", drop=False, inplace=True)
 df["Дата операции"] = pd.to_datetime(df["Дата операции"], dayfirst=True)
-
 
 def log(filename: str):
     def report_decorator(func):
@@ -25,9 +25,7 @@ def log(filename: str):
 
             try:
                 with open(filename, "w", encoding="utf-8") as file:
-                    json.dump(
-                        result, file, ensure_ascii=False, indent=4
-                    )  # Добавлен параметр indent для улучшения читаемости JSON-структур
+                    json.dump(result, file, ensure_ascii=False, indent=4)
             except Exception as e:
                 print("Ошибка при записи файла:", e)
             return result
@@ -36,32 +34,35 @@ def log(filename: str):
 
     return report_decorator
 
-
 @log("../data/report.json")
 def generate_report(transactions, category, date: Optional[str] = None):
     """
     Функция для генерации отчёта по категории транзакций за определённый период времени.
     """
-
     if date is None:
         todate = datetime.datetime.now().date()
+    else:
+        todate = datetime.datetime.strptime(date, "%Y-%m-%d").date()
+
     e_months_ago = todate - datetime.timedelta(days=90)  # 3 месяца в днях
-    three_months_ago = e_months_ago.replace()
-    print(type(transactions["Дата операции"].dt.date), type(data))
+    three_months_ago = e_months_ago  # Убираем .date(), так как это уже объект date
+
     filtered_transactions = transactions.loc[
         (transactions["Категория"] == category)
         & (transactions["Дата операции"].dt.date >= three_months_ago)
         & (transactions["Дата операции"].dt.date < todate)
     ]
-    date = todate
 
     total_spent = filtered_transactions["Сумма операции"].sum()
-    result = {"Категория": category, "Дата операции": str(date), "Всего потрачено": total_spent.astype(str)}
-    logging.info("Отчет по категории %s за %s успешно сгенерирован", category, str(date))
+    result = {
+        "Категория": category,
+        "Дата операции": str(todate),
+        "Всего потрачено": total_spent
+    }
+    logging.info("Отчет по категории %s за %s успешно сгенерирован", category, str(todate))
     return result
 
-
-data = "2021-12-31"
-date_obj = datetime.datetime.strptime(data, "%Y-%m-%d")
-category = input("Введите категорию")
-generate_report(df, category)
+# Пример использования
+# data = "2021-12-31"
+# category = "Супермаркеты"
+# generate_report(df, category, data)

@@ -1,119 +1,66 @@
 import pytest
-from src.utils import get_exchange_rates, get_transactions
+from freezegun import freeze_time
+
+from src.utils import get_exchange_rates, get_transactions, read_json_file, filter_last_month_data
 from unittest.mock import patch
 
-def test_get_transactions():
-    # Подготовка тестовых данных
+
+def test_read_json_file(mock_open_file):
+    data = read_json_file("dummy_path.json")
+    assert data == {"user_currencies": ["USD", "EUR"]}
+
+
+def test_get_transactions(mock_requests_get):
+    mock_response = {"result": "success"}
+    mock_requests_get.return_value.status_code = 200
+    mock_requests_get.return_value.json.return_value = mock_response
+
+    with patch("os.getenv", return_value="dummy_api_key"):
+        data = {"user_currencies": ["USD", "EUR"]}
+        result = get_transactions(data)
+
+        assert "EUR" in result
+        assert result["EUR"] == mock_response
+        mock_requests_get.assert_called_once()
+
+
+@freeze_time("2023-10-02")  # Замораживаем время на 2 октября 2023 года
+def test_get_exchange_rates(mock_requests_get):
+    mock_response = {
+        "Time Series (Daily)": {
+            "2023-10-01": {"1. open": "100", "2. high": "110", "3. low": "90", "4. close": "105"},
+            "2023-09-01": {"1. open": "90", "2. high": "100", "3. low": "80", "4. close": "85"},
+            "2023-08-01": {"1. open": "80", "2. high": "90", "3. low": "70", "4. close": "75"},
+        }
+    }
+
+    mock_requests_get.return_value.status_code = 200
+    mock_requests_get.return_value.json.return_value = mock_response
+
+    with patch("os.getenv", return_value="dummy_api_key"):
+        user_data = {"user_stocks": ["AAPL"]}
+        result = get_exchange_rates(user_data)
+
+        assert "AAPL" in result
+        assert "2023-10-01" in result["AAPL"]
+        assert "2023-09-01" in result["AAPL"]  # Данные за сентябрь должны быть включены
+        assert "2023-08-01" not in result["AAPL"]  # Данные за август не должны быть включены
+
+
+def test_filter_last_month_data():
+    # Дата для тестирования
     data = {
-        "user_currencies": ["USD", "EUR", "GBP"]
+        "Time Series (Daily)": {
+            "2023-10-01": {"1. open": "100", "2. high": "110", "3. low": "90", "4. close": "105"},
+            "2023-09-01": {"1. open": "90", "2. high": "100", "3. low": "80", "4. close": "85"},
+            "2023-08-01": {"1. open": "80", "2. high": "90", "3. low": "70", "4. close": "75"},
+        }
     }
 
-    # Тестирование функции
-    result_dict = get_transactions(data)
+    # Вызов функции фильтрации
+    filtered_data = filter_last_month_data(data)
 
-    assert result_dict == {
-        "USD": None,
-        "EUR": None,
-        "GBP": None
-    }, "Результаты должны соответствовать ожидаемым значениям."
-
-@patch("logging.debug")
-@patch("requests.get")
-def test_logging(mock_requests, mock_debug):
-    # Проверка логирования
-    get_transactions({})
-    mock_debug.assert_called_once_with("Начало запроса")
-    mock_requests.assert_called_once()
-
-# Дополнительные тесты для проверки различных сценариев
-
-def test_empty_data():
-    with pytest.raises(KeyError):
-        get_transactions({}, "error")  # Проверить обработку пустых или некорректных данных
-
-def test_invalid_url():
-    with pytest.raises(ValueError):
-        get_transactions({"user_currencies": []}) # Проверить обработку некорректного URL
-
-def test_missing_symbol():
-    data = {"user_currencies": ["EUR", "GBP"]}
-    with pytest.raises(KeyError):
-        get_transactions(data), "Проверить обработку отсутствующего символа в данных"
-
-def test_response_code_200():
-    response = {
-        'status_code': 200,
-        'text': '{"rate": 1.23}'
-    }
-    mock_response = patch('requests.get', return_value=response)
-    with mock_response as m:
-        result_dict = get_transactions({'user_currencies': ['USD', 'EUR']})
-        assert result_dict['EUR'] == '{"rate": 1.23}', "Проверка корректности обработки ответа с кодом 200"
-
-def test_response_code_404():
-    response = {
-        'status_code': 404,
-        'text': 'Ошибка запроса'
-    }
-    mock_response = patch('requests.get', return_value=response)
-    with mock_response as m:
-        result_dict = get_transactions({'user_currencies': ['USD']})
-        assert result_dict['USD'] is None, "Проверка обработки ответа с кодом ошибки 404"
-
-
-def test_get_exchange_rates():
-    # Подготовка тестовых данных
-    data = {
-        "user_stocks": ["AAPL", "MSFT"]
-    }
-
-    # Тестирование функции
-    result_dict = get_exchange_rates(data)
-
-    assert result_dict == {
-        "AAPL": None,
-        "MSFT": None
-    }, "Результаты должны соответствовать ожидаемым значениям."
-
-@patch("logging.debug")
-@patch("requests.get")
-def test_logging(mock_requests, mock_debug):
-    # Проверка логирования
-    get_exchange_rates({})
-    mock_debug.assert_called_once_with("Начало запроса")
-    mock_requests.assert_called_once()
-
-# Дополнительные тесты для проверки различных сценариев
-
-def test_emptyy_data():
-    with pytest.raises(KeyError):
-        get_exchange_rates({}, "error")  # Проверить обработку пустых или некорректных данных
-
-def test_invalidd_url():
-    with pytest.raises(ValueError):
-        get_exchange_rates({"user_stocks": []}) # Проверить обработку некорректного URL
-
-def test_missingg_symbol():
-    data = {"user_stocks": ["MSFT"]}
-    with pytest.raises(KeyError):
-        get_exchange_rates(data), "Проверить обработку отсутствующего символа в данных"
-
-def test_responsee_code_200():
-    response = {
-        'status_code': 200,
-        'text': '{"rate": 1.23}'
-    }
-    mock_response = patch('requests.get', return_value=response)
-    with mock_response as m:
-        result_dict = get_exchange_rates({'user_stocks': ['AAPL']})
-        assert result_dict['AAPL'] == '{"rate": 1.23}', "Проверка корректности обработки ответа с кодом 200"
-
-def test_responsee_code_404():
-    response = {
-        'status_code': 404,
-        'text': 'Ошибка запроса'
-    }
-    mock_response = patch('requests.get', return_value=response)
-    with mock_response as m:
-        result_dict = get_exchange_rates({'user_stocks': ['MSFT']})
-        assert result_dict['MSFT'] is None, "Проверка обработки ответа с кодом ошибки 404"
+    # Проверка, что данные за последний месяц присутствуют
+    assert "2023-10-01" in filtered_data
+    assert "2023-09-01" in filtered_data
+    assert "2023-08-01" not in filtered_data  # Данные за август не должны быть включены

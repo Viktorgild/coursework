@@ -8,7 +8,7 @@ logging.basicConfig(
     level=logging.DEBUG,
     filename="../logs/views.log",
     encoding="utf-8",
-    format="%(asctime)s - %(name)s" " - %(levelname)s - %(message)s",
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
@@ -42,7 +42,7 @@ def calculate_card_details(transactions):
         # Получение номера карты из транзакции
         try:
             card_number = transaction["card_number"]
-        except KeyError as e:
+        except KeyError:
             logging.error("Ошибка: ключ 'card_number' не найден в словаре транзакций.")
             continue
 
@@ -50,37 +50,35 @@ def calculate_card_details(transactions):
         try:
             last_four_digits = card_number[-4:]
         except Exception as e:
-            logging.exception("Ошибка при извлечении последних 4 цифр номера карты:")
+            logging.exception(f"Ошибка при извлечении последних 4 цифр номера карты {card_number}: {e}")
             continue
 
-        total_amount = sum(
-            [transaction["amount"] for transaction in transactions if transaction["card_number"] == card_number]
-        )
-        cashback = total_amount // 100
+        # Инициализация данных карты, если она еще не добавлена
+        if last_four_digits not in card_details:
+            card_details[last_four_digits] = {
+                "last_four_digits": last_four_digits,
+                "total_amount": 0,
+                "cashback": 0,
+                "transactions": []
+            }
 
-        card_details[last_four_digits] = {
-            "last_four_digits": last_four_digits,
-            "total_amount": total_amount,
-            "cashback": cashback,
-        }
+        # Обновление суммы и кешбэка
+        card_details[last_four_digits]["total_amount"] += transaction["amount"]
+        card_details[last_four_digits]["cashback"] = card_details[last_four_digits]["total_amount"] // 100
+        card_details[last_four_digits]["transactions"].append(transaction)
 
     return card_details
 
 
 def top_transactions(card_details):
-    top_transactions = []
-
-    for _, details in card_details.items():
+    for last_four_digits, details in card_details.items():
         # Сортируем транзакции по убыванию суммы
         sorted_transactions = sorted(details["transactions"], key=lambda x: x["amount"], reverse=True)
 
-        # Добавляем топ-5 транзакций в общий список
-        top_transactions.extend(sorted_transactions[:5])
-
-        print("Топ-5 транзакций:")
         # Выводим топ-5 транзакций, пронумеровав их
+        print(f"Топ-5 транзакций для карты {last_four_digits}:")
         try:
-            for i, transaction in enumerate(top_transactions):
+            for i, transaction in enumerate(sorted_transactions[:5]):
                 print(
                     f"{i + 1}: Дата: {transaction['date']}, Время: {transaction['time']}, Сумма: {transaction['amount']} рублей"
                 )
@@ -88,15 +86,17 @@ def top_transactions(card_details):
             print("Произошла ошибка:", e)
             logging.error("Ошибка при обработке транзакций: " + str(e))
 
-    return top_transactions
-
 
 rates = get_transactions(read_json_file("../user_settings.json"))
 
 # Использование полученных данных
 pprint.pprint(rates)
 
-result_dict = get_exchange_rates(read_json_file("../user_settings.json"))
-pprint.pprint(result_dict)
+user_settings = read_json_file('../user_settings.json')
+
+# Вызов функции с данными из файла
+exchange_rates = get_exchange_rates(user_settings)
+pprint.pprint(exchange_rates)
 
 logging.info("Функция top_transactions успешно выполнена.")
+
