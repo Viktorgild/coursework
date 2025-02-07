@@ -1,22 +1,23 @@
 import datetime
 import json
-import logging
 from typing import Optional
-
 import pandas as pd
+from src.logging_config import setup_logger
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    filename="../logs/reports.log",
-    encoding="utf-8",
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+# Настройка логгера
+logger = setup_logger("reports_logger", "../logs/reports.log")
 
-# Чтение данных из Excel
-df = pd.read_excel("../data/operations.xlsx")
-df.set_index("Категория", drop=False, inplace=True)
-df["Дата операции"] = pd.to_datetime(df["Дата операции"], dayfirst=True)
+def read_operations(file_path: str) -> pd.DataFrame:
+    """Функция для чтения операций из Excel файла."""
+    try:
+        df = pd.read_excel(file_path)
+        df.set_index("Категория", drop=False, inplace=True)
+        df["Дата операции"] = pd.to_datetime(df["Дата операции"], dayfirst=True)
+        logger.info("Операции успешно прочитаны из файла: %s", file_path)
+        return df
+    except Exception as e:
+        logger.error("Ошибка при чтении операций из файла: %s", e)
+        return pd.DataFrame()  # Возвращаем пустой DataFrame в случае ошибки
 
 def log(filename: str):
     def report_decorator(func):
@@ -27,7 +28,7 @@ def log(filename: str):
                 with open(filename, "w", encoding="utf-8") as file:
                     json.dump(result, file, ensure_ascii=False, indent=4)
             except Exception as e:
-                print("Ошибка при записи файла:", e)
+                logger.error("Ошибка при записи файла: %s", e)
             return result
 
         return wrapper
@@ -35,7 +36,7 @@ def log(filename: str):
     return report_decorator
 
 @log("../data/report.json")
-def generate_report(transactions, category, date: Optional[str] = None):
+def generate_report(transactions: pd.DataFrame, category: str, date: Optional[str] = None):
     """
     Функция для генерации отчёта по категории транзакций за определённый период времени.
     """
@@ -54,15 +55,18 @@ def generate_report(transactions, category, date: Optional[str] = None):
     ]
 
     total_spent = filtered_transactions["Сумма операции"].sum()
-    result = {
-        "Категория": category,
-        "Дата операции": str(todate),
-        "Всего потрачено": total_spent
-    }
-    logging.info("Отчет по категории %s за %s успешно сгенерирован", category, str(todate))
+    result = {"Категория": category, "Дата операции": str(todate), "Всего потрачено": total_spent}
+
+    logger.info("Отчет по категории %s за %s успешно сгенерирован", category, str(todate))
+
     return result
 
 # Пример использования
-# data = "2021-12-31"
-# category = "Супермаркеты"
-# generate_report(df, category, data)
+if __name__ == "__main__":
+    operations_file_path = "../data/operations.xlsx"
+    df = read_operations(operations_file_path)
+
+    if not df.empty:
+        data = "2021-12-31"
+        category = "Супермаркеты"
+        generate_report(df, category, data)

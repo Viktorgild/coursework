@@ -1,16 +1,9 @@
 import datetime
-import logging
-import pprint
-
+from src.logging_config import setup_logger
 from utils import get_exchange_rates, get_transactions, read_json_file
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    filename="../logs/views.log",
-    encoding="utf-8",
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+# Настройка логгера
+logger = setup_logger("views_logger", "../logs/views.log")
 
 
 def greetings() -> str:
@@ -26,16 +19,13 @@ def greetings() -> str:
         return "Доброй ночи"
 
 
-print(greetings())
-
-
 def calculate_card_details(transactions):
     """
     Функция для расчёта последних 4 цифр номера карты, общей суммы расходов и кешбэка для каждой карты.
+
     :param transactions: список транзакций
     :return: словарь с деталями по каждой карте
     """
-
     card_details = {}
 
     for transaction in transactions:
@@ -43,14 +33,14 @@ def calculate_card_details(transactions):
         try:
             card_number = transaction["card_number"]
         except KeyError:
-            logging.error("Ошибка: ключ 'card_number' не найден в словаре транзакций.")
+            logger.error("Ошибка: ключ 'card_number' не найден в словаре транзакций.")
             continue
 
         # Извлечение последних 4 цифр номера карты
         try:
             last_four_digits = card_number[-4:]
         except Exception as e:
-            logging.exception(f"Ошибка при извлечении последних 4 цифр номера карты {card_number}: {e}")
+            logger.exception(f"Ошибка при извлечении последних 4 цифр номера карты {card_number}: {e}")
             continue
 
         # Инициализация данных карты, если она еще не добавлена
@@ -59,7 +49,7 @@ def calculate_card_details(transactions):
                 "last_four_digits": last_four_digits,
                 "total_amount": 0,
                 "cashback": 0,
-                "transactions": []
+                "transactions": [],
             }
 
         # Обновление суммы и кешбэка
@@ -71,32 +61,35 @@ def calculate_card_details(transactions):
 
 
 def top_transactions(card_details):
+    """
+    Функция для вывода топ-5 транзакций по каждой карте.
+
+    :param card_details: словарь с деталями по каждой карте
+    """
     for last_four_digits, details in card_details.items():
         # Сортируем транзакции по убыванию суммы
         sorted_transactions = sorted(details["transactions"], key=lambda x: x["amount"], reverse=True)
 
         # Выводим топ-5 транзакций, пронумеровав их
-        print(f"Топ-5 транзакций для карты {last_four_digits}:")
+        logger.info(f"Топ-5 транзакций для карты {last_four_digits}:")
         try:
             for i, transaction in enumerate(sorted_transactions[:5]):
-                print(
+                logger.info(
                     f"{i + 1}: Дата: {transaction['date']}, Время: {transaction['time']}, Сумма: {transaction['amount']} рублей"
                 )
         except Exception as e:
-            print("Произошла ошибка:", e)
-            logging.error("Ошибка при обработке транзакций: " + str(e))
+            logger.error(f"Ошибка при обработке транзакций для карты {last_four_digits}: {e}")
 
 
-rates = get_transactions(read_json_file("../user_settings.json"))
+# Получение транзакций
+user_settings = read_json_file("../user_settings.json")
+transactions = get_transactions(user_settings)
 
 # Использование полученных данных
-pprint.pprint(rates)
-
-user_settings = read_json_file('../user_settings.json')
+exchange_rates = get_exchange_rates(user_settings)
 
 # Вызов функции с данными из файла
-exchange_rates = get_exchange_rates(user_settings)
-pprint.pprint(exchange_rates)
+card_details = calculate_card_details(transactions)
+top_transactions(card_details)
 
-logging.info("Функция top_transactions успешно выполнена.")
-
+logger.info("Функция top_transactions успешно выполнена.")
