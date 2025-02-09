@@ -1,4 +1,3 @@
-import pprint
 from datetime import datetime
 
 import pandas as pd
@@ -7,11 +6,11 @@ from src.logging_config import setup_logger
 from src.reports import generate_report
 from src.services import analyze_cashback, read_json_file
 from src.utils import get_exchange_rates, get_transactions
-from src.views import calculate_card_details, top_transactions
+from src.views import calculate_card_details, top_transactions, greetings
 
 # Настройка логирования
 logger = setup_logger("main_logger", "../logs/main.log")
-
+logger.info(greetings)
 # Пример данных транзакций
 transactions = [
     {"card_number": "1234567890123456", "amount": 1000, "date": "2023-10-01", "time": "12:00"},
@@ -55,12 +54,12 @@ rates = get_transactions(user_settings)
 
 # Использование полученных данных
 logger.info("Полученные данные транзакций: %s", rates)
-pprint.pprint(rates)
+logger.info(rates)
 
 # Вызов функции для получения обменных курсов
 logger.info("Получаем обменные курсы.")
 exchange_rates = get_exchange_rates(user_settings)
-pprint.pprint(exchange_rates)
+logger.info(exchange_rates)
 
 logger.info("Функция top_transactions успешно выполнена.")
 
