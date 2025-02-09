@@ -1,6 +1,5 @@
 import datetime
 from src.logging_config import setup_logger
-from utils import get_exchange_rates, get_transactions, read_json_file
 
 # Настройка логгера
 logger = setup_logger("views_logger", "../logs/views.log")
@@ -17,7 +16,7 @@ def greetings() -> str:
         return "Добрый вечер"
     else:
         return "Доброй ночи"
-
+logger.info("Функция greetings успешно выполнена.")
 
 def calculate_card_details(transactions):
     """
@@ -79,17 +78,5 @@ def top_transactions(card_details):
                 )
         except Exception as e:
             logger.error(f"Ошибка при обработке транзакций для карты {last_four_digits}: {e}")
-
-
-# Получение транзакций
-user_settings = read_json_file("../user_settings.json")
-transactions = get_transactions(user_settings)
-
-# Использование полученных данных
-exchange_rates = get_exchange_rates(user_settings)
-
-# Вызов функции с данными из файла
-card_details = calculate_card_details(transactions)
-top_transactions(card_details)
 
 logger.info("Функция top_transactions успешно выполнена.")

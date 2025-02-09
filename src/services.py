@@ -1,7 +1,7 @@
 import datetime
 import json
 import logging
-from logging_config import setup_logger
+from .logging_config import setup_logger
 
 # Настраиваем логирование
 logger = setup_logger("services_loger", "../logs/services.log")
@@ -50,5 +50,4 @@ result = analyze_cashback(data, 2023, 2)
 
 # Форматированный вывод результата
 print(json.dumps(result, ensure_ascii=False, indent=4))
-
 

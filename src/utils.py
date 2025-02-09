@@ -3,7 +3,7 @@ import os
 from datetime import datetime, timedelta
 import requests
 from dotenv import load_dotenv
-from src.logging_config import setup_logger
+from .logging_config import setup_logger
 
 # Настройка логгера
 logger = setup_logger("utils_logger", "../logs/utils.log")

@@ -2,7 +2,7 @@ import datetime
 import json
 from typing import Optional
 import pandas as pd
-from src.logging_config import setup_logger
+from .logging_config import setup_logger
 
 # Настройка логгера
 logger = setup_logger("reports_logger", "../logs/reports.log")
