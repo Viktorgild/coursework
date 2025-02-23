@@ -1,4 +1,5 @@
 import datetime
+import pandas as pd
 from src.logging_config import setup_logger
 
 # Настройка логгера
@@ -7,16 +8,20 @@ logger = setup_logger("views_logger", "../logs/views.log")
 
 def greetings() -> str:
     """Функция, которая возвращает строку с приветствием в зависимости от времени."""
-    hour = int(datetime.datetime.now().strftime("%H"))
-    if 6 <= hour <= 12:
-        return "Доброе утро"
-    elif 13 <= hour <= 17:
-        return "Добрый день"
-    elif 18 <= hour <= 23:
-        return "Добрый вечер"
-    else:
-        return "Доброй ночи"
-logger.info("Функция greetings успешно выполнена.")
+    try:
+        hour = int(datetime.datetime.now().strftime("%H"))
+        if 6 <= hour <= 12:
+            return "Доброе утро"
+        elif 13 <= hour <= 17:
+            return "Добрый день"
+        elif 18 <= hour <= 23:
+            return "Добрый вечер"
+        else:
+            return "Доброй ночи"
+    except Exception as e:
+        logger.error(f"Ошибка в функции greetings: {e}")
+        return "Ошибка определения приветствия"
+
 
 def calculate_card_details(transactions):
     """
@@ -28,33 +33,26 @@ def calculate_card_details(transactions):
     card_details = {}
 
     for transaction in transactions:
-        # Получение номера карты из транзакции
         try:
             card_number = transaction["card_number"]
-        except KeyError:
-            logger.error("Ошибка: ключ 'card_number' не найден в словаре транзакций.")
-            continue
-
-        # Извлечение последних 4 цифр номера карты
-        try:
             last_four_digits = card_number[-4:]
+
+            if last_four_digits not in card_details:
+                card_details[last_four_digits] = {
+                    "last_four_digits": last_four_digits,
+                    "total_amount": 0,
+                    "cashback": 0,
+                    "transactions": [],
+                }
+
+            card_details[last_four_digits]["total_amount"] += transaction["amount"]
+            card_details[last_four_digits]["cashback"] = card_details[last_four_digits]["total_amount"] // 100
+            card_details[last_four_digits]["transactions"].append(transaction)
+
+        except KeyError as e:
+            logger.error(f"Ошибка: отсутствует ключ {e} в транзакции.")
         except Exception as e:
-            logger.exception(f"Ошибка при извлечении последних 4 цифр номера карты {card_number}: {e}")
-            continue
-
-        # Инициализация данных карты, если она еще не добавлена
-        if last_four_digits not in card_details:
-            card_details[last_four_digits] = {
-                "last_four_digits": last_four_digits,
-                "total_amount": 0,
-                "cashback": 0,
-                "transactions": [],
-            }
-
-        # Обновление суммы и кешбэка
-        card_details[last_four_digits]["total_amount"] += transaction["amount"]
-        card_details[last_four_digits]["cashback"] = card_details[last_four_digits]["total_amount"] // 100
-        card_details[last_four_digits]["transactions"].append(transaction)
+            logger.exception(f"Ошибка обработки транзакции {transaction}: {e}")
 
     return card_details
 
@@ -66,12 +64,9 @@ def top_transactions(card_details):
     :param card_details: словарь с деталями по каждой карте
     """
     for last_four_digits, details in card_details.items():
-        # Сортируем транзакции по убыванию суммы
-        sorted_transactions = sorted(details["transactions"], key=lambda x: x["amount"], reverse=True)
-
-        # Выводим топ-5 транзакций, пронумеровав их
-        logger.info(f"Топ-5 транзакций для карты {last_four_digits}:")
         try:
+            sorted_transactions = sorted(details["transactions"], key=lambda x: x["amount"], reverse=True)
+            logger.info(f"Топ-5 транзакций для карты {last_four_digits}:")
             for i, transaction in enumerate(sorted_transactions[:5]):
                 logger.info(
                     f"{i + 1}: Дата: {transaction['date']}, Время: {transaction['time']}, Сумма: {transaction['amount']} рублей"
@@ -79,4 +74,20 @@ def top_transactions(card_details):
         except Exception as e:
             logger.error(f"Ошибка при обработке транзакций для карты {last_four_digits}: {e}")
 
-logger.info("Функция top_transactions успешно выполнена.")
+
+def get_data_by_date(date_str: str):
+    """Возвращает транзакции за указанную дату из Excel-файла."""
+    try:
+        date_obj = datetime.datetime.strptime(date_str, "%d.%m.%Y").date()
+        df = pd.read_excel("./data/operations.xlsx")
+        df["Дата операции"] = pd.to_datetime(df["Дата операции"], dayfirst=True)
+
+        filtered_transactions = df[df["Дата операции"].dt.date == date_obj]
+        return filtered_transactions.to_dict(orient="records")
+
+    except ValueError:
+        logger.error(f"Неверный формат даты: {date_str}")
+        return []
+    except Exception as e:
+        logger.error(f"Ошибка при обработке даты {date_str}: {e}")
+        return []
