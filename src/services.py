@@ -37,17 +37,3 @@ def analyze_cashback(data, year, month):
     return results
 
 
-#Пример использования функции
-data = {
-    "transactions": [
-        {"category": "Категория 1", "cashback": 500, "date": datetime.datetime(2023, 1, 1)},
-        {"category": "Категория 2", "cashback": 1000, "date": datetime.datetime(2023, 2, 1)},
-    ],
-    "categories": ["Категория 1", "Категория 2"],
-}
-
-result = analyze_cashback(data, 2023, 2)
-
-# Форматированный вывод результата
-print(json.dumps(result, ensure_ascii=False, indent=4))
-
