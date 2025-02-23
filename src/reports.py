@@ -22,17 +22,15 @@ def read_operations(file_path: str) -> pd.DataFrame:
 def log(filename: str):
     def report_decorator(func):
         def wrapper(*args, **kwargs):
-            result = func(*args, **kwargs)
-
             try:
+                result = func(*args, **kwargs)
                 with open(filename, "w", encoding="utf-8") as file:
                     json.dump(result, file, ensure_ascii=False, indent=4)
+                return result
             except Exception as e:
-                logger.error("Ошибка при записи файла: %s", e)
-            return result
-
+                logger.error("Ошибка при выполнении функции %s: %s", func.__name__, e)
+                return {}
         return wrapper
-
     return report_decorator
 
 @log("../data/report.json")
@@ -63,7 +61,7 @@ def generate_report(transactions: pd.DataFrame, category: str, date: Optional[st
 
 # Пример использования
 if __name__ == "__main__":
-    operations_file_path = "../data/operations.xlsx"
+    operations_file_path = "./data/operations.xlsx"
     df = read_operations(operations_file_path)
 
     if not df.empty:
