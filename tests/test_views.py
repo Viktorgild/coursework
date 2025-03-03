@@ -60,5 +60,3 @@ def test_top_transactions(mock_print):
     assert "1: Дата: 2023-10-02, Время: 13:00, Сумма: 200 рублей" in captured.out
     assert "2: Дата: 2023-10-01, Время: 12:00, Сумма: 100 рублей" in captured.out
 
-
-
