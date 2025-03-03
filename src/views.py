@@ -1,6 +1,7 @@
 import datetime
 import pandas as pd
 from src.logging_config import setup_logger
+from src.utils import get_exchange_rates, get_transactions
 
 # Настройка логгера
 logger = setup_logger("views_logger", "../logs/views.log")
@@ -90,4 +91,3 @@ def get_data_by_date(date_str: str):
         return []
     except Exception as e:
         logger.error(f"Ошибка при обработке даты {date_str}: {e}")
-        return []
