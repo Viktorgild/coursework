@@ -92,6 +92,7 @@ def get_data_by_date(date_str: str):
     except Exception as e:
         logger.error(f"Ошибка при обработке даты {date_str}: {e}")
 
+
         return []
 def get_summary_data(date_str: str):
     """Собирает все данные и возвращает JSON-ответ."""
@@ -115,3 +116,5 @@ def get_summary_data(date_str: str):
         "exchange_rates": exchange_rates,
         "stock_prices": stock_prices
     }
+=======
+
