@@ -91,3 +91,30 @@ def get_data_by_date(date_str: str):
         return []
     except Exception as e:
         logger.error(f"Ошибка при обработке даты {date_str}: {e}")
+
+
+        return []
+def get_summary_data(date_str: str):
+    """Собирает все данные и возвращает JSON-ответ."""
+    transactions = get_data_by_date(date_str)
+    card_details = calculate_card_details(transactions)
+    top_trans = top_transactions(card_details)
+
+    # Читаем настройки пользователя
+    user_settings = {
+        "user_currencies": ["USD", "EUR"],
+        "user_stocks": ["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"]
+    }
+
+    exchange_rates = get_exchange_rates(user_settings)
+    stock_prices = get_transactions(user_settings)
+
+    return {
+        "greeting": greetings(),
+        "cards": card_details,
+        "top_transactions": top_trans,
+        "exchange_rates": exchange_rates,
+        "stock_prices": stock_prices
+    }
+=======
+

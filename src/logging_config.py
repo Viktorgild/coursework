@@ -4,7 +4,6 @@ import os
 
 def setup_logger(name, log_file, level=logging.INFO):
     """Создание логгера с указанным именем и файлом."""
-    # Убедитесь, что директория для логов существует
     os.makedirs(os.path.dirname(log_file), exist_ok=True)
 
     # Создание обработчика с указанием кодировки UTF-8
